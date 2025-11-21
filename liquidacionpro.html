@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquidación Pro - Chofer Uber</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='system-ui' fill='%23FFC107'>$↑</text></svg>">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="LiqPro">
+    
+    <link rel="manifest" href="manifest.json"> 
+    <meta name="theme-color" content="#000000">
+
+    <link rel="shortcut icon" href="logo-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="logo-192.png"> 
+    
+    <style>
+        /* Estilos base (Móvil) */
+        body {
+            background-color: #f5f5f5; 
+        }
+        .app-container {
+            max-width: 420px; 
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        /* Estilos Responsive para PC/Tablet */
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 900px; /* Más ancho en desktop */
+            }
+        }
+        .input-style {
+            @apply w-full p-3 border-b border-gray-300 focus:border-yellow-500 focus:ring-0 transition duration-150;
+        }
+        
+        /* FIX: Estilos de Días (Se asegura la prioridad con !important) */
+        .day-label {
+            @apply flex-1 p-2 text-center text-sm font-medium rounded-lg cursor-pointer transition duration-150;
+        }
+        .day-label-inactive {
+            /* FIX: Aseguramos el estado por defecto */
+            background-color: #e5eeeb !important; 
+            color: #4b5563 !important; /* text-gray-700 */
+            border: 1px solid #d1d5db !important; 
+        }
+        .day-label-active {
+            /* FIX: Se asegura que el fondo activo sea dominante */
+            background-color: #f59e0b !important; /* bg-yellow-500 */
+            color: #000 !important; 
+            font-weight: 800 !important; /* font-extrabold */
+            border: 1px solid #f59e0b !important;
+        }
+        
+        .day-checkbox {
+            display: none;
+        }
+        .gnc-day-group {
+            @apply p-3 bg-white rounded-lg border border-gray-100;
+        }
+        .gnc-input {
+             @apply text-sm w-full p-2 border border-gray-200 rounded-md focus:border-yellow-500 focus:ring-0;
+        }
+        
+        /* FIX CRÍTICO PDF: Ocultación con display: none; */
+        #pdf-content {
+            display: none; 
+            width: 700px; 
+            background-color: white;
+            padding: 20px;
+        }
+        
+        .archive-button {
+             @apply bg-red-500 text-white p-4 text-lg font-bold rounded-lg shadow-lg hover:bg-red-600 transition duration-150;
+        }
+        /* Estilos de Pestañas */
+        .tab-button {
+            @apply px-4 py-2 font-bold transition duration-150 border-b-2;
+        }
+        .tab-active {
+            @apply border-yellow-500 text-white;
+        }
+        .tab-inactive {
+            @apply border-transparent text-gray-400 hover:text-white;
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen p-4">
+
+    <div id="app-container" class="app-container bg-white w-full rounded-xl overflow-hidden shadow-2xl">
+
+        <header class="bg-black text-white">
+            <div class="p-4 flex justify-between items-center">
+                 <h1 class="text-xl font-bold">Liquidación Pro</h1>
+                 <div>
+                    <button id="history-button" title="Ver Historial de Ganancias" class="text-xl hover:text-yellow-400 transition duration-150 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                            <path d="M11.25 4.532a.75.75 0 011.5 0v5.856l2.13-2.13a.75.75 0 011.06 1.06l-3.375 3.375a.75.75 0 01-1.06 0l-3.375-3.375a.75.75 0 111.06-1.06l2.13 2.13V4.532z" />
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-2.625.75a.75.75 0 100 1.5h1.5a.75.75 0 100-1.5h-1.5zm-.875.75a.75.75 0 110-1.5h1.5a.75.75 0 110 1.5h-1.5zM12 20.25a8.25 8.25 0 100-16.5 8.25 8.25 0 000 16.5zm-3.375-5.25a.75.75 0 00-1.5 0v.75a.75.75 0 001.5 0v-.75zm6.75 0a.75.75 0 00-1.5 0v.75a.75.75 0 001.5 0v-.75z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button id="settings-button" title="Configurar Costos Fijos" class="text-xl hover:text-yellow-400 transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.818c.036-.057.072-.11.11-.166m-.11.166a.7.7 0 010 .852m-.11-.166C9.176 3.65 8.92 3.5 8.653 3.5H5.87A2.375 2.375 0 003.5 5.87v2.783c0 .267.15.523.418.655l3.864 1.932a2.375 2.375 0 002.375 0l3.864-1.932c.267-.132.418-.388.418-.655V5.87A2.375 2.375 0 0017.13 3.5h-2.783c-.267 0-.523.15-.655.418M18.125 10.5h-1.625M17 14.5v-4.5M17 19.5v-4.5m-3.5 0H9.5m7 0H14m0 0v-4.5m0 4.5v-4.5m0 4.5H9.5m7 0H14m0 0V10H9.5m7 0H14m0 0V5.5H9.5m7 0H14m0 0V1H9.5m7 0H14m0 0V-3.5H9.5m7 0H14m0 0V-8H9.5m7 0H14" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-around bg-gray-900 border-t border-gray-800">
+                <button id="tab-liquidacion" class="tab-button tab-inactive">
+                    Liquidación (Empresa)
+                </button>
+                <button id="tab-chofer" class="tab-button tab-inactive">
+                    Chofer (Mis Gastos)
+                </button>
+            </div>
+        </header>
+
+        <div id="main-content">
+            <div class="p-4 space-y-6">
+
+                <section id="settings-panel" class="hidden p-4 bg-gray-100 rounded-lg border border-gray-200">
+                    <h2 class="text-lg font-bold mb-3 border-b pb-2 text-black">⚙️ Configuración de Costos</h2>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="costo_alquiler_lj" class="text-sm font-medium text-gray-700">Alquiler Lunes-Jueves (ARS):</label>
+                            <input type="number" id="costo_alquiler_lj" class="input-style bg-white" placeholder="Ej: 8500" value="8500">
+                        </div>
+                        <div>
+                            <label for="costo_alquiler_vd" class="text-sm font-medium text-gray-700">Alquiler Viernes-Domingo (ARS):</label>
+                            <input type="number" id="costo_alquiler_vd" class="input-style bg-white" placeholder="Ej: 9500" value="9500">
+                        </div>
+                        <div>
+                            <label for="costo_hora_extra" class="text-sm font-medium text-gray-700">Costo por Hora Extra (ARS):</label>
+                            <input type="number" id="costo_hora_extra" class="input-style bg-white" placeholder="Ej: 500" value="500">
+                        </div>
+                    </div>
+                    <button id="save-settings-button" class="mt-4 w-full bg-gray-800 text-white p-2 rounded-lg hover:bg-black transition duration-150">Guardar y Cerrar</button>
+                </section>
+                
+                <div id="liquidation-view" class="hidden">
+                    <div class="mb-4">
+                        <label for="week-start-date" class="text-sm text-gray-500 font-semibold block mb-1">📅 Seleccionar Lunes de la Semana a Liquidar:</label>
+                        <input type="date" id="week-start-date" class="input-style bg-gray-100 border-0 text-center font-bold">
+                        <p id="week-range" class="text-xs text-gray-500 font-semibold text-center mt-1"></p>
+                    </div>
+
+                    <div class="md:grid md:grid-cols-2 md:gap-x-6 space-y-6 md:space-y-0">
+                        <div class="space-y-6">
+                            <section>
+                                <h2 class="text-md font-bold mb-3 text-black border-b pb-2">📊 Ingresos y Datos Generales</h2>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label for="chofer_nombre" class="text-xs font-semibold text-gray-400 uppercase">Chofer:</label>
+                                        <input type="text" id="chofer_nombre" class="input-style bg-white border-0" placeholder="NOMBRE" value="Tu Nombre">
+                                    </div>
+                                    <div>
+                                        <label for="ganancia_total_uber" class="text-xs font-semibold text-gray-400 uppercase">Suma Total Alcanzada (Uber):</label>
+                                        <input type="number" id="ganancia_total_uber" class="input-style bg-white border-0 text-xl font-bold" placeholder="0" value="">
+                                    </div>
+                                    <div>
+                                        <label for="efectivo_recibido" class="text-xs font-semibold text-gray-400 uppercase">Efectivo Recibido:</label>
+                                        <input type="number" id="efectivo_recibido" class="input-style bg-white border-0 text-xl font-bold" placeholder="0" value="">
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h2 class="text-md font-bold mb-3 text-black border-b pb-2">📅 Días Trabajados</h2>
+                                <div class="flex justify-between space-x-1 mb-4">
+                                    <input type="checkbox" id="dia-lun" class="day-checkbox"><label for="dia-lun" class="day-label day-label-inactive">LUN</label>
+                                    <input type="checkbox" id="dia-mar" class="day-checkbox"><label for="dia-mar" class="day-label day-label-inactive">MAR</label>
+                                    <input type="checkbox" id="dia-mie" class="day-checkbox"><label for="dia-mie" class="day-label day-label-inactive">MIE</label>
+                                    <input type="checkbox" id="dia-jue" class="day-checkbox"><label for="dia-jue" class="day-label day-label-inactive">JUE</label>
+                                    <input type="checkbox" id="dia-vie" class="day-checkbox"><label for="dia-vie" class="day-label day-label-inactive">VIE</label>
+                                    <input type="checkbox" id="dia-sab" class="day-checkbox"><label for="dia-sab" class="day-label day-label-inactive">SAB</label>
+                                    <input type="checkbox" id="dia-dom" class="day-checkbox"><label for="dia-dom" class="day-label day-label-inactive">DOM</label>
+                                </div>
+                                
+                                <div>
+                                    <label for="horas_extras" class="text-xs font-semibold text-gray-400 uppercase">Cantidad de Horas Extras:</label>
+                                    <input type="number" id="horas_extras" class="input-style bg-white border-0" placeholder="0" value="">
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="space-y-6">
+                            <section>
+                                <h2 class="text-md font-bold mb-3 text-black border-b pb-2">💰 Costos y Deducciones (Empresa)</h2>
+                                <div>
+                                    <label for="nafta_semanal" class="text-xs font-semibold text-gray-400 uppercase">Costo Fijo Nafta Semanal (A cargo del Chofer):</label>
+                                    <input type="number" id="nafta_semanal" class="input-style bg-white border-0" placeholder="0.00" value="10000">
+                                </div>
+                                <div class="mt-4 pt-3 border-t">
+                                    <p class="flex justify-between font-medium">Costo Total Alquiler + Horas (Chofer): <span id="output-costo-chofer" class="font-bold text-red-600">ARS 0.00</span></p>
+                                    <p class="flex justify-between font-medium">Monto que la Empresa Recibirá de Uber: <span id="output-monto-empresa" class="font-bold text-green-600">ARS 0.00</span></p>
+                                </div>
+                            </section>
+
+                            <section id="results-panel-liquidation" class="p-4 bg-gray-100 rounded-lg hidden">
+                                <h2 class="text-lg font-bold mb-3 border-b pb-2 text-black">💵 Liquidación Final</h2>
+                                <p class="flex justify-between text-base font-extrabold">Diferencia de Pago:</p>
+                                <p id="output-liquidacion-final" class="text-xl font-extrabold text-center mt-2 p-2 rounded-lg"></p>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chofer-view" class="hidden">
+                    <section>
+                        <h2 class="text-md font-bold mb-3 text-black border-b pb-2">⛽ Gastos GNC Diarios (Para tu control)</h2>
+                        <div class="space-y-4">
+                            <div id="gnc-fields-container" class="space-y-4">
+                                </div>
+
+                            <div class="mt-4 pt-3 border-t">
+                                <p class="flex justify-between text-base font-bold text-black">Total GNC de la Semana:</p>
+                                <p id="total-gnc-output" class="text-xl font-extrabold text-right text-gray-700">ARS 0.00</p>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section id="results-panel-chofer" class="mt-6 p-4 bg-yellow-50 rounded-lg hidden">
+                        <h3 class="text-lg font-bold mt-4 text-black border-b pb-2">Tus Ganancias Netas (Reales):</h3>
+                        <p class="text-2xl font-extrabold text-center p-2 text-yellow-700 rounded-lg" id="output-ganancia-neta">ARS 0.00</p>
+                    </section>
+                </div>
+
+
+                <div class="flex space-x-2 pt-4 border-t border-gray-200">
+                    <button id="calculate-button" class="flex-1 bg-yellow-500 text-white p-4 text-lg font-bold rounded-lg shadow-lg hover:bg-yellow-600 transition duration-150">
+                        CALCULAR
+                    </button>
+                    <button id="export-pdf-button" class="w-1/3 bg-gray-800 text-white p-4 text-lg font-bold rounded-lg shadow-lg hover:bg-black transition duration-150 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-1">
+                            <path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v11.69l3.188-3.188a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.188 3.188V3a.75.75 0 01.75-.75z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M12 18.75a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875V11.25a.75.75 0 011.5 0v5.625a.375.375 0 00.375.375h12.75a.375.375 0 00.375-.375v-5.625a.75.75 0 011.5 0v5.625a1.875 1.875 0 01-1.875 1.875H12.75a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
+                        </svg>
+                        PDF
+                    </button>
+                </div>
+                
+                <button id="archive-button" class="archive-button w-full hidden mt-4">
+                    ARCHIVAR SEMANA Y REINICIAR 💾
+                </button>
+            </div>
+            
+             <footer class="p-2 text-center text-xs text-gray-400 border-t mt-4">
+                © <span id="current-year"></span> Liquidación Pro. 
+                <br>Desarrollo y Propiedad Intelectual de Nestor Hernandez. Prohibida su copia o redistribución.
+            </footer>
+        </div>
+
+        <div id="history-panel" class="p-4 space-y-4 hidden">
+            <h2 class="text-2xl font-bold mb-4 text-black border-b pb-2">📜 Historial de Ganancias Netas</h2>
+
+            <section id="monthly-summary" class="p-3 bg-gray-100 rounded-lg hidden">
+                <h3 class="text-lg font-bold mb-3 border-b pb-1 text-black">Resumen Mensual</h3>
+                <div id="monthly-list" class="space-y-2 text-sm">
+                    </div>
+            </section>
+            
+            <div id="history-list" class="space-y-3">
+                <p id="no-history" class="text-center text-gray-500">No hay semanas archivadas aún.</p>
+            </div>
+            
+            <button id="close-history-button" class="mt-4 w-full bg-black text-white p-2 rounded-lg hover:bg-gray-800 transition duration-150">Volver a Liquidación Actual</button>
+        </div>
+    </div>
+    
+    <div id="pdf-content">
+        </div>
+
+    <script>
+        // Variables para los elementos del DOM y claves de LocalStorage
+        const settingsPanel = document.getElementById('settings-panel');
+        const settingsButton = document.getElementById('settings-button');
+        const saveSettingsButton = document.getElementById('save-settings-button');
+        const calculateButton = document.getElementById('calculate-button');
+        const exportPdfButton = document.getElementById('export-pdf-button');
+        
+        const resultsPanelLiquidation = document.getElementById('results-panel-liquidation');
+        const resultsPanelChofer = document.getElementById('results-panel-chofer');
+
+        const gncContainer = document.getElementById('gnc-fields-container');
+        const archiveButton = document.getElementById('archive-button'); 
+        const historyButton = document.getElementById('history-button'); 
+        const historyPanel = document.getElementById('history-panel'); 
+        const mainContent = document.getElementById('main-content'); 
+        const closeHistoryButton = document.getElementById('close-history-button'); 
+        const historyList = document.getElementById('history-list'); 
+
+        const tabLiquidation = document.getElementById('tab-liquidacion');
+        const tabChofer = document.getElementById('tab-chofer');
+        const liquidationView = document.getElementById('liquidation-view');
+        const choferView = document.getElementById('chofer-view');
+        
+        const weekStartDateInput = document.getElementById('week-start-date'); 
+        const weekRangeDisplay = document.getElementById('week-range'); 
+        
+        const diasIndices = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+        const diasLargos = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const LS_CURRENT_KEY = 'liquidacion_pro_data_current_v5'; 
+        const LS_HISTORY_KEY = 'liquidacion_pro_data_history'; 
+        let currentActiveView = 'liquidacion'; 
+        
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // --- FUNCIÓN DE UTILIDAD ---
+        function formatARS(value) {
+            const num = parseFloat(value) || 0; 
+            return `ARS ${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+        }
+
+        // --- MANEJO DE FECHAS (Semana Lunes a Domingo) ---
+        function calculateWeekRange(dateString) {
+            if (!dateString) return { range: 'Seleccione Lunes' };
+
+            // Asegura que la fecha se interprete correctamente como medianoche local
+            const monday = new Date(dateString + 'T00:00:00'); 
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const format = (date) => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            
+            return {
+                start: monday,
+                end: sunday,
+                range: `SEMANA: ${format(monday)} - ${format(sunday)}`
+            };
+        }
+        
+        function getDefaultMonday() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); 
+            const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek; 
+
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            
+            return monday.toISOString().split('T')[0];
+        }
+
+        function updateWeekRangeDisplay() {
+            const startDate = weekStartDateInput.value;
+            const range = calculateWeekRange(startDate).range;
+            weekRangeDisplay.textContent = range;
+            saveData();
+            calculateLiquidation();
+        }
+
+        // --- FUNCIÓN DE INICIALIZACIÓN DE CAMPOS DE GNC (INCLUYE LA FECHA) ---
+        function initializeGncFields(data = {}) {
+            gncContainer.innerHTML = ''; 
+            
+            // 1. Obtener la fecha de inicio (Lunes) y formateador
+            const startDateString = weekStartDateInput.value;
+            const monday = startDateString ? new Date(startDateString + 'T00:00:00') : null; 
+            
+            // Función para formatear solo día/mes
+            const formatDayDate = (date) => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+
+            diasIndices.forEach((dayKey, index) => {
+                const dayName = diasLargos[index];
+                let dayDateDisplay = ''; 
+
+                // 2. Calcular la fecha específica para el día en el loop
+                if (monday) {
+                    const currentDay = new Date(monday);
+                    // Suma 'index' días (0 para Lunes, 6 para Domingo)
+                    currentDay.setDate(monday.getDate() + index); 
+                    dayDateDisplay = ` (${formatDayDate(currentDay)})`;
+                }
+                
+                const manValue = data[`gnc-${dayKey}-man`] || ''; 
+                const tarValue = data[`gnc-${dayKey}-tar`] || '';
+
+                const html = `
+                    <div class="gnc-day-group">
+                        <p class="text-sm font-semibold mb-2 text-black">${dayName}${dayDateDisplay}:</p> 
+                        <div class="flex space-x-2">
+                            <input type="number" id="gnc-${dayKey}-man" class="gnc-input" placeholder="Carga 1 (0.00)" value="${manValue}">
+                            <input type="number" id="gnc-${dayKey}-tar" class="gnc-input" placeholder="Carga 2 (0.00)" value="${tarValue}">
+                        </div>
+                    </div>
+                `;
+                gncContainer.insertAdjacentHTML('beforeend', html);
+            });
+
+            // Re-adjuntar eventos a los nuevos inputs de GNC
+            gncContainer.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('input', () => {
+                    saveData();
+                    calculateLiquidation();
+                });
+            });
+        }
+        
+        // --- FUNCIÓN DE CARGA DE DATOS (LOAD) ---
+        function loadData() {
+            const storedData = localStorage.getItem(LS_CURRENT_KEY);
+            let data = {};
+            
+            if (storedData) {
+                data = JSON.parse(storedData);
+            }
+
+            // 1. Persistencia de Gastos Fijos y Configuración
+            document.getElementById('costo_alquiler_lj').value = data.costo_alquiler_lj || 8500;
+            document.getElementById('costo_alquiler_vd').value = data.costo_alquiler_vd || 9500;
+            document.getElementById('costo_hora_extra').value = data.costo_hora_extra || 500;
+            document.getElementById('nafta_semanal').value = data.nafta_semanal || 10000;
+            
+            // 2. Inicialización en 0/Vacío: Ingresos y Horas Extras
+            document.getElementById('ganancia_total_uber').value = data.ganancia_total_uber || ''; 
+            document.getElementById('efectivo_recibido').value = data.efectivo_recibido || '';
+            document.getElementById('horas_extras').value = data.horas_extras || '';
+            
+            // Otros datos
+            document.getElementById('chofer_nombre').value = data.chofer_nombre || 'Tu Nombre';
+
+            // 3. Calendario: Cargar fecha o usar la por defecto
+            weekStartDateInput.value = data.week_start_date || getDefaultMonday();
+            updateWeekRangeDisplay(); // Llama a saveData y calculateLiquidation
+            
+            // 4. Cargar Días Trabajados y actualizar estilos
+            diasIndices.forEach((day) => {
+                const checkbox = document.getElementById(`dia-${day}`);
+                const label = document.querySelector(`label[for="dia-${day}"]`);
+
+                if (checkbox) {
+                    const isChecked = data[`dia-${day}`] === true; 
+                    checkbox.checked = isChecked;
+                    
+                    if (label) {
+                        label.classList.toggle('day-label-active', isChecked);
+                        label.classList.toggle('day-label-inactive', !isChecked);
+                    }
+                }
+            });
+            
+            // 5. Inicializar y cargar GNC
+            initializeGncFields(data);
+            
+            calculateLiquidation(); // Asegura el cálculo inicial
+        }
+
+        // --- FUNCIÓN DE GUARDADO DE DATOS (SAVE) ---
+        function saveData() {
+            const data = {};
+            
+            data.week_start_date = weekStartDateInput.value;
+            
+            // Guardar Configuración y datos principales
+            data.chofer_nombre = document.getElementById('chofer_nombre').value;
+            data.ganancia_total_uber = document.getElementById('ganancia_total_uber').value;
+            data.efectivo_recibido = document.getElementById('efectivo_recibido').value;
+            data.nafta_semanal = document.getElementById('nafta_semanal').value;
+            data.horas_extras = document.getElementById('horas_extras').value;
+            
+            // Configuración 
+            data.costo_alquiler_lj = document.getElementById('costo_alquiler_lj').value;
+            data.costo_alquiler_vd = document.getElementById('costo_alquiler_vd').value;
+            data.costo_hora_extra = document.getElementById('costo_hora_extra').value;
+
+            // Guardar Días Trabajados (Checkboxes)
+            diasIndices.forEach((day) => {
+                const checkbox = document.getElementById(`dia-${day}`);
+                if (checkbox) {
+                    data[`dia-${day}`] = checkbox.checked;
+                }
+            });
+            
+            // Guardar Gastos GNC
+            diasIndices.forEach(dayKey => {
+                data[`gnc-${dayKey}-man`] = document.getElementById(`gnc-${dayKey}-man`)?.value || '';
+                data[`gnc-${dayKey}-tar`] = document.getElementById(`gnc-${dayKey}-tar`)?.value || '';
+            });
+
+            localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(data));
+        }
+
+        // --- MANEJADORES DE EVENTOS Y UI (CORRECCIÓN CRÍTICA DE VISIBILIDAD) ---
+        function switchView(viewName) {
+            currentActiveView = viewName; 
+
+            if (viewName === 'liquidacion') {
+                if (liquidationView) { // VERIFICACIÓN CRÍTICA
+                    liquidationView.classList.remove('hidden');
+                }
+                if (choferView) {
+                    choferView.classList.add('hidden');
+                }
+                if (tabLiquidation) {
+                    tabLiquidation.classList.add('tab-active');
+                    tabLiquidation.classList.remove('tab-inactive');
+                }
+                if (tabChofer) {
+                    tabChofer.classList.add('tab-inactive');
+                    tabChofer.classList.remove('tab-active');
+                }
+            } else if (viewName === 'chofer') {
+                if (liquidationView) { // VERIFICACIÓN CRÍTICA
+                    liquidationView.classList.add('hidden');
+                }
+                if (choferView) {
+                    choferView.classList.remove('hidden');
+                }
+                if (tabChofer) {
+                    tabChofer.classList.add('tab-active');
+                    tabChofer.classList.remove('tab-inactive');
+                }
+                if (tabLiquidation) {
+                    tabLiquidation.classList.add('tab-inactive');
+                    tabLiquidation.classList.remove('tab-active');
+                }
+            }
+        }
+        
+        tabLiquidation.addEventListener('click', () => switchView('liquidacion'));
+        tabChofer.addEventListener('click', () => switchView('chofer'));
+
+        weekStartDateInput.addEventListener('change', updateWeekRangeDisplay);
+
+        settingsButton.addEventListener('click', () => settingsPanel.classList.toggle('hidden'));
+        saveSettingsButton.addEventListener('click', () => { saveData(); calculateLiquidation(); settingsPanel.classList.add('hidden'); });
+        
+        // LÓGICA DE VISIBILIDAD DE PANELES
+        historyButton.addEventListener('click', () => { 
+            mainContent.classList.add('hidden'); 
+            historyPanel.classList.remove('hidden'); 
+            loadHistory(); 
+        });
+        closeHistoryButton.addEventListener('click', () => { 
+            historyPanel.classList.add('hidden'); 
+            mainContent.classList.remove('hidden'); 
+            switchView(currentActiveView); 
+        });
+
+        // Evento de cambio para los checkboxes de los días
+        diasIndices.forEach((day) => {
+            const checkbox = document.getElementById(`dia-${day}`);
+            const label = document.querySelector(`label[for="dia-${day}"]`);
+            
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    const isChecked = checkbox.checked;
+                    label.classList.toggle('day-label-active', isChecked);
+                    label.classList.toggle('day-label-inactive', !isChecked);
+                    
+                    saveData();
+                    calculateLiquidation();
+                });
+            }
+        });
+
+        // Adjuntar eventos de guardado y cálculo a los inputs principales
+        document.querySelectorAll('#app-container input[type="number"], #app-container input[type="text"]').forEach(input => {
+            // Se excluyen los inputs de GNC (se manejan en initializeGncFields), settings y la fecha.
+            if (!input.id.includes('gnc-') && !input.closest('#settings-panel') && input.id !== 'week-start-date') {
+                 input.addEventListener('input', () => {
+                    saveData();
+                    calculateLiquidation();
+                });
+            }
+        });
+        
+        calculateButton.addEventListener('click', calculateLiquidation);
+        
+        // --- FUNCIÓN PRINCIPAL DE CÁLCULO ---
+        function calculateLiquidation() {
+            const costoAlquilerLJ = parseFloat(document.getElementById('costo_alquiler_lj').value) || 0;
+            const costoAlquilerVD = parseFloat(document.getElementById('costo_alquiler_vd').value) || 0;
+            const costoHoraExtra = parseFloat(document.getElementById('costo_hora_extra').value) || 0;
+
+            const gananciaTotalUber = parseFloat(document.getElementById('ganancia_total_uber').value) || 0;
+            const efectivoRecibido = parseFloat(document.getElementById('efectivo_recibido').value) || 0;
+            const naftaSemanal = parseFloat(document.getElementById('nafta_semanal').value) || 0;
+            const horasExtras = parseFloat(document.getElementById('horas_extras').value) || 0;
+            
+            // 1. CÁLCULO GNC (Gastos del Chofer)
+            let totalGncSemanal = 0;
+            diasIndices.forEach(dayKey => {
+                const manGNC = parseFloat(document.getElementById(`gnc-${dayKey}-man`)?.value) || 0;
+                const tarGNC = parseFloat(document.getElementById(`gnc-${dayKey}-tar`)?.value) || 0;
+                totalGncSemanal += manGNC + tarGNC;
+            });
+            document.getElementById('total-gnc-output').textContent = formatARS(totalGncSemanal);
+
+            
+            // 2. CÁLCULO COSTO ALQUILER CHOFER PARA EMPRESA
+            let costoAlquilerAcumulado = 0;
+            const diasLiquidacion = []; 
+            let alquilerBase = 0; 
+
+            diasIndices.forEach((day, index) => {
+                const isChecked = document.getElementById(`dia-${day}`).checked;
+                let costoDia = 0;
+
+                if (isChecked) {
+                    if (index >= 0 && index <= 3) { // Lunes a Jueves (Índices 0 a 3)
+                        costoDia = costoAlquilerLJ;
+                    } else { // Viernes a Domingo (Índices 4 a 6)
+                        costoDia = costoAlquilerVD;
+                    }
+                    costoAlquilerAcumulado += costoDia;
+                }
+                diasLiquidacion.push({ nombre: diasLargos[index], costo: costoDia, trabajado: isChecked });
+            });
+            alquilerBase = costoAlquilerAcumulado;
+
+            const costoTotalHorasExtras = horasExtras * costoHoraExtra;
+            const costoTotalChofer = costoAlquilerAcumulado + costoTotalHorasExtras;
+            
+            // 3. CÁLCULO LIQUIDACIÓN FINAL
+            const montoRecibidoEmpresa = gananciaTotalUber - efectivoRecibido;
+            const costoTotalParaEmpresa = costoTotalChofer + naftaSemanal;
+            const diferenciaPago = montoRecibidoEmpresa - costoTotalParaEmpresa;
+            
+            const gananciaNetaChofer = gananciaTotalUber - costoTotalChofer - naftaSemanal - totalGncSemanal;
+
+            // 4. MOSTRAR RESULTADOS EN LA APP
+            const showResults = gananciaTotalUber > 0 || efectivoRecibido > 0 || costoAlquilerAcumulado > 0;
+            
+            if (showResults) {
+                resultsPanelLiquidation.classList.remove('hidden');
+                resultsPanelChofer.classList.remove('hidden');
+                archiveButton.classList.remove('hidden'); 
+            } else {
+                 resultsPanelLiquidation.classList.add('hidden');
+                resultsPanelChofer.classList.add('hidden');
+                archiveButton.classList.add('hidden'); 
+            }
+            
+
+            document.getElementById('output-costo-chofer').textContent = formatARS(costoTotalChofer);
+            document.getElementById('output-monto-empresa').textContent = formatARS(montoRecibidoEmpresa);
+            document.getElementById('output-ganancia-neta').textContent = formatARS(gananciaNetaChofer);
+            
+            const outputFinal = document.getElementById('output-liquidacion-final');
+            let diferenciaTexto = "";
+            let diferenciaColor = "";
+
+            if (diferenciaPago >= 0) {
+                diferenciaTexto = `La Empresa Te REGRESA: ${formatARS(diferenciaPago)}`;
+                diferenciaColor = 'bg-green-200 text-green-700';
+            } else {
+                const montoAPagar = Math.abs(diferenciaPago);
+                diferenciaTexto = `Debes PAGAR a la Empresa: ${formatARS(montoAPagar)}`;
+                diferenciaColor = 'bg-red-200 text-red-700';
+            }
+            outputFinal.textContent = diferenciaTexto;
+            outputFinal.className = `text-xl font-extrabold text-center mt-2 p-2 rounded-lg ${diferenciaColor}`;
+            
+            // 5. ACTUALIZAR EL CONTENIDO OCULTO DEL PDF
+            updatePdfContent(gananciaTotalUber, efectivoRecibido, alquilerBase, horasExtras, costoHoraExtra, costoTotalHorasExtras, costoTotalChofer, naftaSemanal, montoRecibidoEmpresa, costoTotalParaEmpresa, diferenciaTexto, diferenciaColor, diasLiquidacion);
+
+            // 6. Guardar el objeto de la liquidación actual para archivar
+            const weekRangeData = calculateWeekRange(weekStartDateInput.value);
+            window.currentLiquidation = {
+                date: new Date().toLocaleDateString('es-AR'),
+                weekRange: weekRangeData.range,
+                monthKey: weekRangeData.start.getFullYear() + '-' + (weekRangeData.start.getMonth() + 1).toString().padStart(2, '0'),
+                chofer: document.getElementById('chofer_nombre').value,
+                gananciaNeta: gananciaNetaChofer,
+                diferenciaPago: diferenciaTexto,
+                diferenciaColor: diferenciaColor,
+                id: Date.now() 
+            };
+        }
+
+        // --- GESTIÓN DEL HISTORIAL Y PDF ---
+        archiveButton.addEventListener('click', archiveWeek);
+
+        function archiveWeek() {
+            if (!window.currentLiquidation) {
+                alert("Debes calcular la liquidación primero.");
+                return;
+            }
+            if (!weekStartDateInput.value || !window.currentLiquidation.weekRange.includes('/')) {
+                alert("Por favor, selecciona la fecha de inicio (Lunes) de la semana a archivar.");
+                return;
+            }
+
+            let history = JSON.parse(localStorage.getItem(LS_HISTORY_KEY) || '[]');
+            const isDuplicate = history.some(item => item.weekRange === window.currentLiquidation.weekRange);
+            if (isDuplicate) {
+                if (!confirm(`La semana ${window.currentLiquidation.weekRange} ya existe en el historial. ¿Deseas reemplazarla con los datos actuales?`)) {
+                    return; 
+                }
+                history = history.filter(item => item.weekRange !== window.currentLiquidation.weekRange);
+            }
+
+
+            history.push(window.currentLiquidation);
+            history.sort((a, b) => {
+                const dateA = new Date(a.weekRange.split(' - ')[0].split('/').reverse().join('-'));
+                const dateB = new Date(b.weekRange.split(' - ')[0].split('/').reverse().join('-'));
+                return dateA - dateB;
+            });
+            
+            localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(history));
+            resetCurrentWeekData(); 
+            alert("¡Liquidación archivada con éxito! La aplicación ha sido reiniciada para la nueva semana.");
+            loadHistory();
+            switchView('liquidacion'); 
+        }
+
+        function resetCurrentWeekData() {
+            // Guardar la persistencia de los valores de configuración
+            const savedSettings = {
+                costo_alquiler_lj: document.getElementById('costo_alquiler_lj').value,
+                costo_alquiler_vd: document.getElementById('costo_alquiler_vd').value,
+                costo_hora_extra: document.getElementById('costo_hora_extra').value,
+                nafta_semanal: document.getElementById('nafta_semanal').value,
+                chofer_nombre: document.getElementById('chofer_nombre').value,
+                week_start_date: getDefaultMonday() 
+            };
+
+            localStorage.removeItem(LS_CURRENT_KEY); 
+            
+            document.getElementById('ganancia_total_uber').value = '';
+            document.getElementById('efectivo_recibido').value = '';
+            document.getElementById('horas_extras').value = '';
+
+            document.getElementById('nafta_semanal').value = savedSettings.nafta_semanal;
+            document.getElementById('chofer_nombre').value = savedSettings.chofer_nombre;
+            weekStartDateInput.value = savedSettings.week_start_date; 
+            updateWeekRangeDisplay(); 
+
+            // Reset de días seleccionados
+            diasIndices.forEach((day) => {
+                const checkbox = document.getElementById(`dia-${day}`);
+                const label = document.querySelector(`label[for="dia-${day}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                    label.classList.remove('day-label-active');
+                    label.classList.add('day-label-inactive');
+                }
+            });
+
+            initializeGncFields({}); 
+            resultsPanelLiquidation.classList.add('hidden');
+            resultsPanelChofer.classList.add('hidden');
+            archiveButton.classList.add('hidden');
+            calculateLiquidation();
+        }
+
+        function groupHistoryByMonth(history) {
+            const monthlySummary = {};
+            history.forEach(item => {
+                const monthKey = item.monthKey; 
+                
+                const [year, month] = monthKey.split('-');
+                const monthDate = new Date(year, parseInt(month) - 1); 
+                const monthName = monthDate.toLocaleDateString('es-AR', { year: 'numeric', month: 'long' });
+                
+                if (!monthlySummary[monthKey]) {
+                    monthlySummary[monthKey] = { name: monthName, total: 0 };
+                }
+                monthlySummary[monthKey].total += item.gananciaNeta;
+            });
+            return monthlySummary;
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem(LS_HISTORY_KEY) || '[]');
+            historyList.innerHTML = '';
+            
+            if (history.length === 0) {
+                document.getElementById('monthly-summary').classList.add('hidden');
+                historyList.innerHTML = '<p class="text-center text-gray-500" id="no-history">No hay semanas archivadas aún.</p>';
+                return;
+            }
+            
+            // Generar resumen mensual
+            const summaryData = groupHistoryByMonth(history);
+            const monthlyList = document.getElementById('monthly-list');
+            monthlyList.innerHTML = '';
+            
+            const sortedMonthKeys = Object.keys(summaryData).sort().reverse(); 
+
+            sortedMonthKeys.forEach(monthKey => {
+                const { name: monthName, total: amount } = summaryData[monthKey];
+                const summaryHtml = `
+                    <p class="flex justify-between font-bold">
+                        <span>${monthName.charAt(0).toUpperCase() + monthName.slice(1)}:</span>
+                        <span class="text-yellow-700">${formatARS(amount)}</span>
+                    </p>
+                `;
+                monthlyList.insertAdjacentHTML('beforeend', summaryHtml);
+            });
+            document.getElementById('monthly-summary').classList.remove('hidden');
+
+
+            // Mostrar historial semanal (ordenado inversamente por fecha de archivo, el último primero)
+            history.reverse().forEach(item => {
+                const itemHtml = `
+                    <div class="p-3 border-b border-gray-200 bg-white rounded-lg shadow-sm">
+                        <p class="text-sm text-gray-500 font-medium">${item.weekRange}</p>
+                        <p class="text-lg font-bold mt-1 text-black">Ganancia Neta: <span class="text-yellow-700">${formatARS(item.gananciaNeta)}</span></p>
+                        <p class="text-sm font-medium ${item.diferenciaColor.includes('green') ? 'text-green-600' : 'text-red-600'}">${item.diferenciaPago}</p>
+                        <p class="text-xs text-right text-gray-400">Archivado: ${item.date}</p>
+                    </div>
+                `;
+                historyList.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+        
+        // --- FUNCIÓN DE EXPORTACIÓN PDF ---
+        exportPdfButton.addEventListener('click', generatePdf);
+
+        function updatePdfContent(gananciaUber, efectivo, alquilerBase, horasQty, costoHE, totalHE, costoChofer, nafta, montoEmpresa, costoEmpresa, diffTexto, diffColor, dias) {
+            const empresaRecibiraLabel = "Monto que la Empresa Recibirá de Uber:";
+            const choferNombre = document.getElementById('chofer_nombre').value || 'Chofer Indefinido';
+            const now = new Date();
+            
+            const pdfContent = document.getElementById('pdf-content');
+            pdfContent.innerHTML = `
+                <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; text-align: center;">RESUMEN DE LIQUIDACIÓN SEMANAL</h1>
+                <p style="font-size: 12px; color: #6b7280; margin-bottom: 24px; text-align: center;">Generado por Liquidación Pro | ${now.toLocaleDateString('es-AR', { dateStyle: 'long' })}</p>
+
+                <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; color: #000;">Datos Generales</h2>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px;">
+                    <p><span style="font-weight: 500;">Chofer:</span> <span>${choferNombre}</span></p>
+                    <p><span style="font-weight: 500;">Semana:</span> <span>${document.getElementById('week-range').textContent}</span></p>
+                    <p><span style="font-weight: 500;">Suma Total Alcanzada (Uber):</span> <span style="font-weight: bold;">${formatARS(gananciaUber)}</span></p>
+                    <p><span style="font-weight: 500;">Efectivo Recibido:</span> <span style="font-weight: bold;">${formatARS(efectivo)}</span></p>
+                </div>
+
+                <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; color: #000; margin-top: 24px;">Costo del Alquiler</h2>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+                    <thead>
+                        <tr style="background-color: #f9fafb;">
+                            <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 500; color: #6b7280; text-transform: uppercase;">Día</th>
+                            <th style="padding: 12px; text-align: left; font-size: 10px; font-weight: 500; color: #6b7280; text-transform: uppercase;">Monto Fijo</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background-color: #ffffff; font-size: 14px;">
+                        ${dias.map(d => `
+                            <tr style="border-top: 1px solid #e5e7eb;">
+                                <td style="padding: 8px;">${d.nombre} (${d.trabajado ? '✅ Sí' : '❌ No'})</td>
+                                <td style="padding: 8px;">${d.trabajado ? formatARS(d.costo) : 'ARS 0.00'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f9fafb; font-weight: bold;">
+                            <td style="padding: 12px;">Total Alquiler Base:</td>
+                            <td style="padding: 12px;">${formatARS(alquilerBase)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style="margin-bottom: 24px;">
+                    <p style="display: flex; justify-content: space-between; margin-bottom: 4px;">Horas Extras (${horasQty} @ ${formatARS(costoHE)} ARS): <span style="font-weight: bold;">${formatARS(totalHE)}</span></p>
+                    <p style="display: flex; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 8px; font-weight: 500;">Costo Total Alquiler + Extras: <span style="font-weight: 800;">${formatARS(costoChofer)}</span></p>
+                    <p style="display: flex; justify-content: space-between; font-weight: 500;">Costo Fijo Nafta: <span style="font-weight: bold;">${formatARS(nafta)}</span></p>
+                </div>
+                
+                <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; color: #000; margin-top: 24px;">Liquidación Final</h2>
+                <div style="margin-bottom: 8px;">
+                    <p style="display: flex; justify-content: space-between; font-weight: 500;">${empresaRecibiraLabel} <span style="font-weight: bold; color: #065f46;">${formatARS(montoEmpresa)}</span></p>
+                    <p style="display: flex; justify-content: space-between; font-weight: 500;">Costo Total Chofer + Nafta Fija: <span style="font-weight: bold; color: #b91c1c;">${formatARS(costoEmpresa)}</span></p>
+                    <hr style="margin-top: 8px; margin-bottom: 8px; border-color: #d1d5db;">
+                    <p style="font-size: 20px; font-weight: 800; text-align: center; padding: 12px; border-radius: 8px; background-color: ${diffColor.includes('green') ? '#d1fae5' : '#fee2e2'}; color: ${diffColor.includes('green') ? '#065f46' : '#b91c1c'};">${diffTexto}</p>
+                </div>
+
+                <p style="font-size: 10px; text-align: center; margin-top: 24px; color: #9ca3af;">Este resumen no incluye los gastos de GNC del chofer. Los cálculos fueron realizados con los parámetros guardados en Liquidación Pro.</p>
+                <p style="font-size: 8px; text-align: center; margin-top: 10px; color: #9ca3af;">Desarrollo y Propiedad Intelectual de **[Tu Nombre Aquí]**. Prohibida su copia o redistribución.</p>
+            `;
+        }
+
+        // FIX CRÍTICO PDF: Hacer visible el contenido temporalmente.
+        function generatePdf() {
+            calculateLiquidation(); 
+            
+            const element = document.getElementById('pdf-content');
+            
+            // 1. Mostrar el contenido PDF
+            element.style.display = 'block'; 
+
+            const options = {
+                margin: 10,
+                filename: `Liquidacion_${document.getElementById('chofer_nombre').value.replace(/\s/g, '_') || 'Semanal'}_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 2. Generar el PDF y luego ocultar el contenido.
+            html2pdf().set(options).from(element).save().then(() => {
+                 element.style.display = 'none'; // Ocultar de nuevo
+            });
+        }
+
+        // --- INICIALIZACIÓN FINAL (CON DOBLE SEGURIDAD DE VISIBILIDAD) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Se usa try/catch para asegurar que si hay un problema con localStorage o el cálculo, 
+            // el script no se detenga antes de mostrar la UI.
+            try {
+                loadData(); 
+            } catch (error) {
+                console.error("Error durante la carga inicial de datos. Mostrando UI de todas formas.", error);
+            }
+            
+            // LLAMADA CRÍTICA: Asegura que la vista de Liquidación se muestre al inicio.
+            // Los checks dentro de switchView previenen el fallo que oculta la UI.
+            switchView('liquidacion'); 
+        });
+    </script>
+</body>
+</html>
